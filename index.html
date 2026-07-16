@@ -1,0 +1,414 @@
+<!DOCTYPE html><html lang="zh"><head><meta name="x-poe-datastore-behavior" content="local_only"><meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://code.jquery.com https://unpkg.com https://d3js.org https://threejs.org https://cdn.plot.ly https://stackpath.bootstrapcdn.com https://maps.googleapis.com https://cdn.tailwindcss.com https://ajax.googleapis.com https://kit.fontawesome.com https://cdn.datatables.net https://maxcdn.bootstrapcdn.com https://code.highcharts.com https://tako-static-assets-production.s3.amazonaws.com https://www.youtube.com https://fonts.googleapis.com https://fonts.gstatic.com https://pfst.cf2.poecdn.net https://puc.poecdn.net https://i.imgur.com https://wikimedia.org https://*.icons8.com https://*.giphy.com https://picsum.photos https://images.unsplash.com; frame-src 'self' https://www.youtube.com https://trytako.com; child-src 'self'; manifest-src 'self'; worker-src 'self'; upgrade-insecure-requests; block-all-mixed-content;">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Starbucks Challenge Demo</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; }
+  body { background:#1a1a1e; min-height:100vh; display:flex; align-items:center; justify-content:center; }
+
+  /* ===== 手机壳 ===== */
+  .phone {
+    width:393px; height:852px; background:#000; border-radius:54px;
+    padding:12px; box-shadow:0 30px 80px rgba(0,0,0,.6), 0 0 0 2px #333;
+    position:relative; flex-shrink:0;
+  }
+  .phone .notch {
+    position:absolute; top:22px; left:50%; transform:translateX(-50%);
+    width:120px; height:30px; background:#000; border-radius:20px; z-index:99;
+  }
+  .screen { width:100%; height:100%; border-radius:42px; overflow:hidden; position:relative; background:#2b2f33; }
+  @media (max-height:900px){ .phone{ transform:scale(.88); } }
+
+  .page { position:absolute; inset:0; display:none; flex-direction:column; }
+  .page.active { display:flex; }
+  .bg { position:absolute; inset:0; background-size:cover; background-position:center; }
+  .bg-street  { background-image:url('bg_street.png');  background-color:#3a4148; }
+  .bg-queue   { background-image:url('bg_queue.png');   background-color:#c8b89a; }
+  .bg-counter { background-image:url('bg_counter.png'); background-color:#d9c9a8; }
+  .bg-pickup  { background-image:url('bg_pickup.png');  background-color:#e5d9c0; }
+  .dim { position:absolute; inset:0; background:rgba(0,0,0,.35); }
+
+  /* ===== 挑战卡 ===== */
+  .logo {
+    width:88px; height:88px; border-radius:50%;
+    position:absolute; top:-44px; left:50%; transform:translateX(-50%);
+    border:4px solid #fff; background:#fff; overflow:hidden;
+  }
+  .logo img { width:100%; height:100%; object-fit:cover; }
+  .card {
+    position:relative; background:#fff; border-radius:6px;
+    width:76%; margin:0 auto; padding:70px 28px 60px; text-align:center;
+  }
+  .card h1 { font-size:17px; letter-spacing:1px; color:#222; font-weight:700; margin-bottom:60px; }
+  .card p  { font-size:17px; color:#333; line-height:1.8; }
+  .center-wrap { position:relative; flex:1; display:flex; flex-direction:column; justify-content:center; }
+  .stamp {
+    position:absolute; right:-18px; bottom:20px; background:#006241; color:#fff;
+    font-size:44px; font-weight:900; font-style:italic; padding:6px 22px 14px;
+    border-radius:14px; transform:rotate(-8deg); border:5px solid #fff;
+    text-decoration:underline; letter-spacing:2px;
+  }
+
+  /* ===== 按钮 ===== */
+  .btn-bar { position:relative; padding:0 0 46px; display:flex; gap:14px; justify-content:center; }
+  .btn {
+    border:3px solid #fff; border-radius:26px; padding:13px 34px;
+    font-size:16px; font-weight:600; color:#fff; cursor:pointer;
+    background:#4f6ef7; box-shadow:0 4px 14px rgba(0,0,0,.3); user-select:none;
+    -webkit-user-select:none; touch-action:none;
+  }
+  .btn.gray { background:#5b5f79; }
+  .btn:active { transform:scale(.96); }
+
+  .hint {
+    position:relative; color:#fff; font-size:15px; text-align:left;
+    padding:0 26px 18px; text-shadow:0 1px 4px rgba(0,0,0,.7);
+  }
+
+  /* ===== 菜单浮层 ===== */
+  .menu-mask { position:absolute; inset:0; background:rgba(0,0,0,.55); display:none; flex-direction:column; z-index:20; }
+  .menu-mask.active { display:flex; }
+  .menu-card {
+    margin:44px 22px 10px; flex:1; background:#23211c; border:1px solid #8a7a55;
+    border-radius:10px; padding:22px 20px; color:#e8e2d2; overflow-y:auto;
+  }
+  .menu-card h3 { font-size:13px; letter-spacing:2px; color:#c9b87c; margin-bottom:6px; }
+  .menu-card .sub { font-size:12px; color:#a89f8a; margin-bottom:14px; line-height:1.5; }
+  .menu-card .cat { font-size:11px; letter-spacing:2px; color:#c9b87c; margin:14px 0 6px; }
+  .menu-row { display:flex; justify-content:space-between; align-items:baseline; padding:5px 0; border-bottom:1px solid rgba(255,255,255,.06); }
+  .menu-row b { font-size:15px; font-weight:600; font-family:Georgia,serif; }
+  .menu-row span { font-size:10px; color:#9a917c; }
+  .make-yours { margin-top:16px; font-size:11px; color:#b3a98e; line-height:1.8; }
+  .make-yours b { color:#c9b87c; font-size:12px; }
+
+  /* ===== 对话页：字幕 & CC ===== */
+  .cc-btn {
+    position:absolute; top:60px; right:18px; z-index:30;
+    background:rgba(0,0,0,.45); color:#fff; border:1.5px solid rgba(255,255,255,.7);
+    border-radius:8px; padding:5px 12px; font-size:13px; font-weight:700;
+    letter-spacing:1px; cursor:pointer; user-select:none; -webkit-user-select:none;
+    opacity:.75;
+  }
+  .cc-btn.on { background:#006241; border-color:#fff; opacity:1; }
+  .speaking-dot {
+    position:absolute; top:64px; left:22px; z-index:30; display:none;
+    align-items:center; gap:8px; color:#fff; font-size:12px;
+    text-shadow:0 1px 4px rgba(0,0,0,.8);
+  }
+  .speaking-dot.active { display:flex; }
+  .speaking-dot i {
+    width:10px; height:10px; border-radius:50%; background:#3ddc84;
+    animation:blink 1s infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:.2;} }
+  .subtitle {
+    position:absolute; left:0; right:0; bottom:130px; z-index:25;
+    display:flex; justify-content:center; padding:0 20px;
+    pointer-events:none;
+  }
+  .subtitle span {
+    background:rgba(0,0,0,.62); color:#fff; font-size:15.5px; line-height:1.55;
+    padding:9px 16px; border-radius:8px; max-width:100%; text-align:center;
+    opacity:0; transition:opacity .25s;
+  }
+  .subtitle span.show { opacity:1; }
+
+  .talk-btn {
+    background:#4f6ef7; border:3px solid #fff; border-radius:28px;
+    padding:15px 0; width:200px; margin:0 auto; text-align:center;
+    color:#fff; font-size:16px; font-weight:600; cursor:pointer;
+    user-select:none; -webkit-user-select:none; touch-action:none;
+    box-shadow:0 4px 14px rgba(0,0,0,.35);
+  }
+  .talk-btn.recording { background:#e14b4b; animation:pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{ box-shadow:0 0 0 0 rgba(225,75,75,.5);} 50%{ box-shadow:0 0 0 14px rgba(225,75,75,0);} }
+
+  /* ===== 报告页 ===== */
+  .report-card {
+    position:relative; background:#fff; border-radius:6px; width:84%;
+    margin:70px auto 16px; padding:64px 24px 28px; flex:1; overflow-y:auto; text-align:left;
+  }
+  .report-card h1 { font-size:16px; text-align:center; letter-spacing:1px; margin-bottom:22px; color:#222; }
+  .sec { margin-bottom:22px; }
+  .sec h2 { font-size:14px; color:#006241; margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+  .score-row { display:flex; align-items:center; gap:12px; margin-bottom:8px; }
+  .score { font-size:34px; font-weight:800; color:#006241; }
+  .stars { color:#f5a623; font-size:16px; letter-spacing:2px; }
+  .sec p { font-size:13px; color:#444; line-height:1.7; }
+  .listen-badge {
+    display:inline-block; background:#eef6f1; color:#006241; font-size:12px;
+    padding:4px 12px; border-radius:12px; margin-top:8px; font-weight:600;
+  }
+  .review-item { background:#f5f7f4; border-radius:10px; padding:10px 12px; margin-bottom:8px; }
+  .review-item .you  { font-size:12.5px; color:#666; }
+  .review-item .good { font-size:12.5px; color:#006241; margin-top:4px; }
+  .review-item .tip  { font-size:12px; color:#888; margin-top:4px; line-height:1.5; }
+  .tag { display:inline-block; font-size:10px; padding:1px 8px; border-radius:8px; margin-bottom:4px; font-weight:600; }
+  .tag.ok   { background:#dcefe4; color:#006241; }
+  .tag.up   { background:#fdeeda; color:#c07b1f; }
+  .course { border:1px solid #e0e0e0; border-radius:10px; padding:12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; }
+  .course b { font-size:13.5px; color:#222; display:block; }
+  .course span { font-size:11.5px; color:#888; }
+  .course .go { background:#006241; color:#fff; font-size:12px; padding:6px 14px; border-radius:14px; white-space:nowrap; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen">
+
+    <!-- 1 挑战卡 -->
+    <div class="page active" id="p-intro">
+      <div class="bg bg-street"></div><div class="dim"></div>
+      <div class="center-wrap">
+        <div class="card">
+          <div class="logo"><img src="logo.png" alt=""></div>
+          <h1>STARBUCKS CHALLENGE</h1>
+          <p>点一杯你喜欢的饮品，<br>至少完成一个客制化要求</p>
+        </div>
+      </div>
+      <div class="btn-bar"><div class="btn" onclick="go('p-queue')">开始挑战</div></div>
+    </div>
+
+    <!-- 2 排队 -->
+    <div class="page" id="p-queue">
+      <div class="bg bg-queue"></div>
+      <div style="flex:1"></div>
+      <div class="hint">前面还有人在点单，要不要先看看菜单？</div>
+      <div class="btn-bar">
+        <div class="btn gray" onclick="go('p-counter')">不用了</div>
+        <div class="btn" onclick="menu(true)">查看菜单</div>
+      </div>
+      <div class="menu-mask" id="menu">
+        <div class="menu-card">
+          <h3>COUNTER MENU</h3>
+          <div class="sub">Take a look. You'll place your order out loud at the counter.</div>
+          <div class="cat">ESPRESSO</div>
+          <div class="menu-row"><b>Caffè Latte</b><span>espresso · steamed milk</span></div>
+          <div class="menu-row"><b>Cappuccino</b><span>espresso · foam</span></div>
+          <div class="menu-row"><b>Caffè Americano</b><span>espresso · hot water</span></div>
+          <div class="menu-row"><b>Flat White</b><span>ristretto · whole milk</span></div>
+          <div class="menu-row"><b>Caramel Macchiato</b><span>vanilla · caramel drizzle</span></div>
+          <div class="menu-row"><b>Caffè Mocha</b><span>mocha sauce · whipped cream</span></div>
+          <div class="cat">COLD COFFEE</div>
+          <div class="menu-row"><b>Iced Latte</b><span>espresso · milk · ice</span></div>
+          <div class="menu-row"><b>Iced Shaken Espresso</b><span>espresso · ice · milk</span></div>
+          <div class="menu-row"><b>Cold Brew</b><span>slow-steeped coffee</span></div>
+          <div class="cat">TEA &amp; OTHER</div>
+          <div class="menu-row"><b>Iced Matcha Latte</b><span>matcha · milk · ice</span></div>
+          <div class="menu-row"><b>Chai Tea Latte</b><span>spiced black tea · milk</span></div>
+          <div class="make-yours"><b>Make it yours</b><br>
+            Tall · Grande · Venti&nbsp;&nbsp;/&nbsp;&nbsp;hot · iced<br>
+            oat · almond · soy · coconut milk&nbsp;&nbsp;/&nbsp;&nbsp;light ice · no ice<br>
+            extra shot · decaf</div>
+        </div>
+        <div class="btn-bar"><div class="btn" onclick="menu(false);go('p-counter')">我想好了</div></div>
+      </div>
+    </div>
+
+    <!-- 3 柜台对话（无气泡 / 电影字幕） -->
+    <div class="page" id="p-counter">
+      <div class="bg bg-counter"></div>
+      <div class="cc-btn" id="cc" onclick="toggleCC()">CC</div>
+      <div class="speaking-dot" id="dot"><i></i>店员正在说话</div>
+      <div class="subtitle"><span id="sub"></span></div>
+      <div style="flex:1"></div>
+      <div class="btn-bar">
+        <div class="talk-btn" id="talk">按住说话</div>
+      </div>
+    </div>
+
+    <!-- 4 取餐 -->
+    <div class="page" id="p-pickup">
+      <div class="bg bg-pickup"></div>
+      <div style="flex:1"></div>
+      <div class="btn-bar"><div class="btn" onclick="go('p-done')">取餐</div></div>
+    </div>
+
+    <!-- 5 DONE -->
+    <div class="page" id="p-done">
+      <div class="bg bg-street"></div><div class="dim"></div>
+      <div class="center-wrap">
+        <div class="card">
+          <div class="logo"><img src="logo.png" alt=""></div>
+          <h1>STARBUCKS CHALLENGE</h1>
+          <p>点一杯你喜欢的饮品，<br>至少完成一个客制化要求</p>
+          <div class="stamp">DONE</div>
+        </div>
+      </div>
+      <div class="btn-bar"><div class="btn" onclick="go('p-report')">查看结果报告</div></div>
+    </div>
+
+    <!-- 6 报告 -->
+    <div class="page" id="p-report">
+      <div class="bg bg-street"></div><div class="dim"></div>
+      <div class="report-card">
+        <div class="logo"><img src="logo.png" alt=""></div>
+        <h1>STARBUCKS CHALLENGE · 结果报告</h1>
+
+        <div class="sec">
+          <h2>📊 Overall 评价</h2>
+          <div class="score-row"><div class="score">86</div><div class="stars">★★★★☆</div></div>
+          <p>恭喜完成挑战！你独立完成了一次完整点单：饮品 + 3 项客制化（大杯 / 冰 / 燕麦奶），并顺利完成留名和支付环节。表达清晰、回应及时，店员没有要求你重复任何一句话——这在真实点单中是很棒的信号。</p>
+          <div class="listen-badge" id="cc-report">🎧 全程未开启字幕，纯听力完成对话</div>
+        </div>
+
+        <div class="sec">
+          <h2>🔍 逐句复盘 &amp; 拓展</h2>
+          <div class="review-item">
+            <span class="tag ok">很地道</span>
+            <div class="you">你说：Hi, can I get a latte?</div>
+            <div class="tip">"Can I get..." 是点单最高频句型，比 "I want..." 更礼貌自然。同类表达：I'll have a latte, please. / Could I do a latte?</div>
+          </div>
+          <div class="review-item">
+            <span class="tag up">可以更好</span>
+            <div class="you">你说：Grande, please. And iced.</div>
+            <div class="good">更流畅：Grande, iced, please.</div>
+            <div class="tip">分开说完全没问题！熟练后可以合成一句，甚至第一句就说完：Can I get a grande iced latte?</div>
+          </div>
+          <div class="review-item">
+            <span class="tag ok">很地道</span>
+            <div class="you">你说：Oat milk, please.</div>
+            <div class="tip">简短 + please，正是柜台对话的正确节奏。拓展：with oat milk instead / make it oat milk。</div>
+          </div>
+          <div class="review-item">
+            <span class="tag up">小提示</span>
+            <div class="you">你说：It's Leo.</div>
+            <div class="good">也可以：Leo. L-E-O.</div>
+            <div class="tip">名字容易被写错，主动拼一遍是老外常用技巧，还能多练字母发音。</div>
+          </div>
+        </div>
+
+        <div class="sec">
+          <h2>🎓 推荐课程</h2>
+          <div class="course"><div><b>《咖啡店英语进阶》</b><span>加料、改单、堂食外带，20+ 真实场景句型</span></div><div class="go">去学习</div></div>
+          <div class="course"><div><b>《数字与金额听力特训》</b><span>听懂价格、找零、杯型，告别"假装听懂"</span></div><div class="go">去学习</div></div>
+          <div class="course"><div><b>《连读与弱读入门》</b><span>为什么 "What can I get you" 听起来只有三个音</span></div><div class="go">去学习</div></div>
+        </div>
+      </div>
+      <div class="btn-bar">
+        <div class="btn gray" onclick="restart()">再练一次</div>
+        <div class="btn" onclick="alert('Demo 结束，感谢体验！')">结束</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ================= 剧本 ================= */
+const SCRIPT = [
+  { ai:"Hi there! What can I get for you today?" },
+  { user:"Hi, can I get a latte?",        ai:"Sure thing! What size would you like?" },
+  { user:"Grande, please. And iced.",     ai:"Got it. Any milk preference?" },
+  { user:"Oat milk, please.",             ai:"Perfect — one grande iced latte with oat milk. Can I get a name for the order?" },
+  { user:"It's Leo.",                     ai:"That'll be $6.25 — cash or card?" },
+  { user:"Card, please.",                 ai:"Sure — go ahead and tap whenever you're ready. We'll call your name when it's ready, Leo!", end:true },
+];
+
+let step = 0, busy = false;
+let ccOn = false, ccOpens = 0;
+let currentLine = "", aiSpeaking = false;
+
+/* ================= 页面切换 ================= */
+function go(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if(id==='p-counter' && step===0) setTimeout(()=>aiSay(SCRIPT[0].ai), 800);
+  if(id==='p-report') fillReport();
+}
+function menu(show){ document.getElementById('menu').classList.toggle('active', show); }
+function restart(){
+  step = 0; busy = false; ccOn = false; ccOpens = 0;
+  currentLine = ""; aiSpeaking = false;
+  document.getElementById('cc').classList.remove('on');
+  hideSub();
+  go('p-intro');
+}
+
+/* ================= 字幕 & CC ================= */
+const sub = document.getElementById('sub');
+const dot = document.getElementById('dot');
+function showSub(text){ sub.textContent = text; sub.classList.add('show'); }
+function hideSub(){ sub.classList.remove('show'); }
+function toggleCC(){
+  ccOn = !ccOn;
+  document.getElementById('cc').classList.toggle('on', ccOn);
+  if(ccOn){
+    ccOpens++;
+    if(aiSpeaking && currentLine) showSub(currentLine); // 立即显示正在说的话
+  } else {
+    hideSub();
+  }
+}
+function fillReport(){
+  const el = document.getElementById('cc-report');
+  el.textContent = ccOpens === 0
+    ? "🎧 全程未开启字幕，纯听力完成对话"
+    : "🎧 本次开启字幕 " + ccOpens + " 次 · 建议加强柜台场景听力";
+}
+
+/* ================= TTS ================= */
+let voice = null;
+function pickVoice(){
+  const vs = speechSynthesis.getVoices();
+  voice = vs.find(v=>/en[-_]US/i.test(v.lang) && /female|samantha|aria|jenny|zira/i.test(v.name))
+       || vs.find(v=>/en[-_]US/i.test(v.lang)) || vs.find(v=>/^en/i.test(v.lang)) || null;
+}
+speechSynthesis.onvoiceschanged = pickVoice; pickVoice();
+
+function aiSay(text, end){
+  currentLine = text;
+  aiSpeaking = true;
+  dot.classList.add('active');
+  if(ccOn) showSub(text);
+  try{
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    if(voice) u.voice = voice;
+    u.lang = 'en-US'; u.rate = 0.95;
+    u.onend = done;
+    speechSynthesis.speak(u);
+    setTimeout(()=>{ if(aiSpeaking && !speechSynthesis.speaking) done(); }, 10000); // 兜底
+  }catch(e){ setTimeout(done, 2500); }
+
+  function done(){
+    if(!aiSpeaking) return;
+    aiSpeaking = false;
+    dot.classList.remove('active');
+    setTimeout(hideSub, 1200);            // 字幕停留一下再淡出
+    busy = false;
+    if(end) setTimeout(()=>go('p-pickup'), 1500);
+  }
+}
+
+/* ================= 按住说话（假识别，用户台词不上屏） ================= */
+const talk = document.getElementById('talk');
+let holding = false;
+
+talk.addEventListener('pointerdown', e=>{
+  e.preventDefault();
+  if(busy || step + 1 >= SCRIPT.length) return;
+  holding = true;
+  talk.classList.add('recording');
+  talk.textContent = '正在听…';
+});
+function release(e){
+  e.preventDefault();
+  if(!holding) return;
+  holding = false;
+  talk.classList.remove('recording');
+  talk.textContent = '按住说话';
+  step++;
+  const line = SCRIPT[step];
+  if(!line) return;
+  busy = true;
+  setTimeout(()=> aiSay(line.ai, line.end), 800); // 停顿一下，像店员在反应
+}
+talk.addEventListener('pointerup', release);
+talk.addEventListener('pointerleave', e=>{ if(holding) release(e); });
+</script>
+
+
+</body></html>
